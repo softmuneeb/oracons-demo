@@ -9,7 +9,7 @@ import {
 import { getEmployee, deleteEmployee } from '../data/db.server';
 import { useI18n } from '../i18n/I18nContext';
 
-export function meta({ data }: { data: ReturnType<typeof loader> | undefined }) {
+export function meta({ data }: { data: Awaited<ReturnType<typeof loader>> | undefined }) {
   const name = data
     ? `${data.employee.firstName} ${data.employee.lastName}`
     : 'Employee';

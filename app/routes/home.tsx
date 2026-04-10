@@ -2,6 +2,7 @@ import { Link, Form, useSubmit, useLoaderData } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
 import {
   DEPARTMENTS,
+  STATUSES,
   getInitials,
   DEPT_COLORS,
   AVATAR_COLORS,
@@ -9,6 +10,7 @@ import {
 } from '../data/employees';
 import { getEmployees, getAllEmployees } from '../data/db.server';
 import { useI18n } from '../i18n/I18nContext';
+import DrilldownChart from '../components/DrilldownChart';
 
 export function meta() {
   return [{ title: 'Dashboard | OraHR' }];
@@ -25,21 +27,35 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     getAllEmployees(db),
   ]);
 
+  // Build department stats for the drill-down bar chart
+  const deptMap = new Map<string, { name: string; total: number; byStatus: Record<string, number> }>();
+  for (const e of all) {
+    if (!deptMap.has(e.department)) {
+      deptMap.set(e.department, { name: e.department, total: 0, byStatus: {} });
+    }
+    const d = deptMap.get(e.department)!;
+    d.total++;
+    d.byStatus[e.status] = (d.byStatus[e.status] ?? 0) + 1;
+  }
+  const departmentStats = Array.from(deptMap.values()).sort((a, b) => b.total - a.total);
+
   return {
     employees: filtered,
+    allEmployees: all,
     stats: {
       total: all.length,
       active: all.filter((e) => e.status === 'Active').length,
       remote: all.filter((e) => e.status === 'Remote').length,
       departments: new Set(all.map((e) => e.department)).size,
     },
+    departmentStats,
     q,
     dept,
   };
 }
 
 export default function Home() {
-  const { employees, stats, q, dept } = useLoaderData<typeof loader>();
+  const { employees, allEmployees, stats, departmentStats, q, dept } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const { t, locale, isRTL } = useI18n();
 
@@ -110,6 +126,35 @@ export default function Home() {
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">{stats.departments}</p>
+        </div>
+      </div>
+
+      {/* Reports section: bar chart + organogram CTA */}
+      <div className="grid grid-cols-3 gap-6 mb-8">
+        <div className="col-span-2">
+          <DrilldownChart departmentStats={departmentStats} employees={allEmployees} />
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between">
+          <div>
+            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
+              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Org Chart</h3>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Visualise your reporting hierarchy. View and manage who reports to whom across all departments.
+            </p>
+          </div>
+          <Link
+            to="/organogram"
+            className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            View Org Chart
+          </Link>
         </div>
       </div>
 

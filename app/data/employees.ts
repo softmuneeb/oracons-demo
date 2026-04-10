@@ -58,4 +58,3 @@ export const STATUS_COLORS: Record<string, string> = {
   'On Leave': 'bg-amber-100 text-amber-700',
   Terminated: 'bg-red-100 text-red-700',
 };
-  {

@@ -2,10 +2,10 @@ import { Link, Form, redirect, useLoaderData, useActionData } from 'react-router
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { DEPARTMENTS, STATUSES } from '../data/employees';
 import type { EmployeeStatus } from '../data/employees';
-import { getEmployee, updateEmployee } from '../data/db.server';
+import { getEmployee, updateEmployee, getAllEmployees } from '../data/db.server';
 import { useI18n } from '../i18n/I18nContext';
 
-export function meta({ data }: { data: ReturnType<typeof loader> | undefined }) {
+export function meta({ data }: { data: Awaited<ReturnType<typeof loader>> | undefined }) {
   const name = data
     ? `Edit ${data.employee.firstName} ${data.employee.lastName}`
     : 'Edit Employee';
@@ -13,9 +13,13 @@ export function meta({ data }: { data: ReturnType<typeof loader> | undefined }) 
 }
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-  const employee = await getEmployee(context.cloudflare.env.DB, params.id!);
+  const db = context.cloudflare.env.DB;
+  const [employee, allEmployees] = await Promise.all([
+    getEmployee(db, params.id!),
+    getAllEmployees(db),
+  ]);
   if (!employee) throw new Response('Not Found', { status: 404 });
-  return { employee };
+  return { employee, allEmployees };
 }
 
 export async function action({ params, request, context }: ActionFunctionArgs) {
@@ -49,7 +53,7 @@ const INPUT_CLS =
   'w-full px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400';
 
 export default function EditEmployee() {
-  const { employee: e } = useLoaderData<typeof loader>();
+  const { employee: e, allEmployees } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const { t, currency, isRTL } = useI18n();
 
@@ -214,13 +218,20 @@ export default function EditEmployee() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">{t('managerLabel')}</label>
-              <input
-                type="text"
+              <select
                 name="manager"
-                defaultValue={e.manager}
-                placeholder={t('managerPlaceholder')}
+                defaultValue={e.manager ?? ''}
                 className={INPUT_CLS}
-              />
+              >
+                <option value="">— {t('managerPlaceholder')} —</option>
+                {allEmployees
+                  .filter((emp) => emp.id !== e.id)
+                  .map((emp) => (
+                    <option key={emp.id} value={`${emp.firstName} ${emp.lastName}`}>
+                      {emp.firstName} {emp.lastName} — {emp.role}
+                    </option>
+                  ))}
+              </select>
             </div>
           </div>
         </section>

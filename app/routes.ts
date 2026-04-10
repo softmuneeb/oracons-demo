@@ -6,5 +6,6 @@ export default [
     route("employees/new", "routes/employees.new.tsx"),
     route("employees/:id", "routes/employees.$id.tsx"),
     route("employees/:id/edit", "routes/employees.$id.edit.tsx"),
+    route("organogram", "routes/organogram.tsx"),
   ]),
 ] satisfies RouteConfig;
